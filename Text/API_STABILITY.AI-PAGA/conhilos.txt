@@ -1,0 +1,105 @@
+import threading
+from io import BytesIO
+import IPython
+import json
+import os
+from PIL import Image
+import requests
+import time
+from google.colab import output
+
+# Instalar los requisitos
+# Conectar a la API de Stability
+
+import getpass
+# Para obtener tu clave de API, visita https://platform.stability.ai/account/keys
+STABILITY_KEY = getpass.getpass('Introduce tu clave de API')
+
+# Definir funciones
+
+def send_generation_request(
+    host,
+    params,
+):
+    headers = {
+        "Accept": "image/*",
+        "Authorization": f"Bearer {STABILITY_KEY}"
+    }
+
+    # Codificar parámetros
+    files = {}
+    image = params.pop("image", None)
+    mask = params.pop("mask", None)
+    if image is not None and image != '':
+        files["image"] = open(image, 'rb')
+    if mask is not None and mask != '':
+        files["mask"] = open(mask, 'rb')
+    if len(files) == 0:
+        files["none"] = ''
+
+    # Enviar solicitud
+    print(f"Enviando solicitud REST a {host}...")
+    response = requests.post(
+        host,
+        headers=headers,
+        files=files,
+        data=params
+    )
+    if not response.ok:
+        raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+    return response
+
+def generate_image():
+    # Definir parámetros de la generación
+    prompt = "This dreamlike digital" #@param {type:"string"}
+    negative_prompt = "" #@param {type:"string"}
+    aspect_ratio = "1:1" #@param ["21:9", "16:9", "3:2", "5:4", "1:1", "4:5", "2:3", "9:16", "9:21"]
+    seed = 0 #@param {type:"integer"}
+    output_format = "jpeg" #@param ["jpeg", "png"]
+
+    host = f"https://api.stability.ai/v2beta/stable-image/generate/sd3"
+
+    params = {
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+        "aspect_ratio": aspect_ratio,
+        "seed": seed,
+        "output_format": output_format,
+        "model": "sd3",
+        "mode": "text-to-image"
+    }
+
+    # Enviar solicitud de generación
+    response = send_generation_request(
+        host,
+        params
+    )
+
+    # Decodificar respuesta
+    output_image = response.content
+    finish_reason = response.headers.get("finish-reason")
+    seed = response.headers.get("seed")
+
+    # Verificar la clasificación NSFW
+    if finish_reason == 'CONTENT_FILTERED':
+        raise Warning("Generación fallida, clasificación NSFW")
+
+    # Guardar y mostrar el resultado
+    generated = f"generated_{seed}.{output_format}"
+    with open(generated, "wb") as f:
+        f.write(output_image)
+    print(f"Imagen guardada: {generated}")
+
+    output.no_vertical_scroll()
+    print("Imagen resultante:")
+    IPython.display.display(Image.open(generated))
+
+# Crear y empezar el hilo para la generación de imagen
+generation_thread = threading.Thread(target=generate_image)
+generation_thread.start()
+
+# Esperar a que el hilo de generación termine
+generation_thread.join()
+
+print("¡Proceso completado!")

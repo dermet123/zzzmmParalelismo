@@ -1,0 +1,39 @@
+import streamlit as st
+from dotenv import load_dotenv
+import os
+import openai
+
+#Se importan las bibliotecas necesarias. streamlit se utiliza para crear la interfaz web, dotenv para cargar las variables de entorno desde un archivo .env, os para interactuar con el sistema operativo y openai para interactuar con la API de OpenAI.
+
+load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+#Se carga la variable de entorno OPENAI_API_KEY, que debería contener la clave de API de OpenAI necesaria para autenticar las solicitudes a su servicio.
+
+st.title("Genera Imagen API con DALL-E")
+
+#Se establece el título de la aplicación web.
+with st.form("images_form"):
+
+#Se utiliza un formulario de Streamlit para recopilar la entrada del usuario, que incluye el texto de entrada, el número de imágenes a generar y el tamaño de las imágenes.
+    text = st.text_input("Inngrese que quieres generar")
+    num_image = st.number_input("Numero de imagenes a generar", min_value=1, max_value=10, value=1)
+    image_size = st.selectbox("Tamaño de la imagen", ["256x256", "515x515", "1024x1024"], index=0)
+    submit_button = st.form_submit_button(label="Generar Imagen")
+#Se agrega un botón para enviar el formulario cuando el usuario haya ingresado todos los datos necesarios.
+
+if submit_button:
+
+#Se verifica si se ha enviado el formulario y, si es así, se procede a generar las imágenes utilizando la API de OpenAI.
+    st.write("Generando imagenes...")
+    response = openai.Image.create(
+        prompt = text,
+        n = num_image,
+        size = image_size
+    )
+
+#Se utiliza el método openai.Image.create() para enviar una solicitud a la API de OpenAI con el texto de entrada proporcionado por el usuario, el número de imágenes a generar y el tamaño de las imágenes.
+    print(response)
+
+#Se imprime la respuesta de la API de OpenAI, que contiene información sobre las imágenes generadas.

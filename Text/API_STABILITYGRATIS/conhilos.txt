@@ -1,0 +1,29 @@
+import threading
+import torch
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+	
+# Función para cargar el modelo y generar la imagen
+def load_model_and_generate_image(prompt, model_id):
+    # Cargar el modelo
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    pipe = pipe.to("cuda")
+ 
+    # Generar la imagen
+    image = pipe(prompt, height=512, width=768).images[0]
+    image.save("generated_image.png")
+	
+# ID del modelo
+model_id = "stabilityai/stable-diffusion-2-1"
+	
+# Prompt para generar la imagen
+prompt = "a people running in the park"
+	
+# Crear un hilo para cargar el modelo y generar la imagen
+thread = threading.Thread(target=load_model_and_generate_image, args=(prompt, model_id))
+thread.start()
+	
+# Esperar a que el hilo termine
+thread.join()
+	
+print("Imagen generada exitosamente.")
